@@ -1,0 +1,36 @@
+WITH fo AS (
+    SELECT
+        ducsi.marketplace_id,
+        ducsi.asin,
+        ducsi.customer_id,
+        MIN(ducsi.order_day) AS first_order_day
+    FROM
+        andes.booker.d_unified_cust_shipment_items ducsi
+    WHERE
+        ducsi.region_id = 2
+        AND ducsi.marketplace_id = {FREE_FORM}
+        AND ducsi.ship_day BETWEEN '2022-01-01' AND CURRENT_DATE
+       AND ducsi.asin IN (******
+)
+    GROUP BY
+        ducsi.marketplace_id, ducsi.asin, ducsi.customer_id
+)
+
+SELECT
+    fo.marketplace_id,
+    fo.asin,
+    TO_CHAR(DATE_TRUNC('month', ducsi.order_day), 'YYYY-MM') AS timeframe,
+    COUNT(DISTINCT CASE WHEN ducsi.order_day = fo.first_order_day THEN ducsi.customer_id END) AS new_customers,
+    COUNT(DISTINCT CASE WHEN ducsi.order_day <> fo.first_order_day THEN ducsi.customer_id END) AS repeat_customers
+FROM
+    andes.booker.d_unified_cust_shipment_items ducsi
+    JOIN fo ON ducsi.marketplace_id = fo.marketplace_id AND ducsi.customer_id = fo.customer_id AND ducsi.asin = fo.asin
+WHERE
+    ducsi.region_id = 2
+    AND ducsi.marketplace_id = fo.marketplace_id
+    AND ducsi.asin = fo.asin
+    AND ducsi.ship_day BETWEEN '2022-01-01' AND CURRENT_DATE
+GROUP BY
+    fo.marketplace_id, fo.asin, TO_CHAR(DATE_TRUNC('month', ducsi.order_day), 'YYYY-MM')
+ORDER BY
+    fo.marketplace_id, fo.asin, TO_CHAR(DATE_TRUNC('month', ducsi.order_day), 'YYYY-MM');
